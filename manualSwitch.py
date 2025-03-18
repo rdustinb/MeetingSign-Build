@@ -10,8 +10,6 @@ import os
 # For updating the configuation file:
 configFile = os.path.join(os.path.dirname(os.path.realpath(__file__)), "config.ini")
 
-ENABLE_SERIAL_UPDATE=True
-
 try:
     if sys.argv[1] == "On":
         ledOn = True
@@ -48,6 +46,10 @@ with open(configFile, "w") as fh_w:
 config = configparser.ConfigParser()
 config.read(configFile)
 
+ENABLE_SERIAL_UPDATE = config.getboolean('DEFAULT', 'enableUpdate')
+ENABLE_EXTRA_DEBUG = config.getboolean('DEFAULT', 'extraDebug')
+thisBaud = config.get('DEFAULT', 'arduinoSerialBaud')
+
 # Update the sign manually
 if ENABLE_SERIAL_UPDATE:
     # Get the Serial USB Device
@@ -55,13 +57,18 @@ if ENABLE_SERIAL_UPDATE:
     for p in port:
       if(p.usb_description() == 'USB Serial'):
         thisDevice = p.device
-        print("I am attempting to update device: %s..."%(thisDevice))
+        if ENABLE_EXTRA_DEBUG: print("I am attempting to update device: %s..."%(thisDevice))
     
     try:
+        # Read in the defined BAUD
+        if ENABLE_EXTRA_DEBUG: print("Reading the configuration from the file...")
+
         # Setup and Write to the Serial Device
-        serialIF = Serial(thisDevice, config.get('DEFAULT', 'arduinoSerialBaud'), timeout=0.5)
+        if ENABLE_EXTRA_DEBUG: print("Setting up the Serial device handler...")
+        serialIF = Serial(thisDevice, thisBaud, timeout=0.1)
     
         # For this update, set the LED based on the calendar events checked above...
+        if ENABLE_EXTRA_DEBUG: print("Writing to the Serial device...")
         if ledOn:
             serialIF.write('M0016000002160100041603000600080007000801050000160305001601160016.\r\n'.encode('raw_unicode_escape'))
         else:
@@ -73,6 +80,7 @@ if ENABLE_SERIAL_UPDATE:
             raise ValueError('uController Failure response.')
     
         # Close the IF
+        if ENABLE_EXTRA_DEBUG: print("Done, closing the Serial handler...")
         serialIF.close()
 
         # Print that the update finished successfully
